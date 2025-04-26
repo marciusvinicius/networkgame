@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "string.h": "c",
+        "iostream": "cpp",
+        "game.h": "c",
+        "server.h": "c"
+    }
+}

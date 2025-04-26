@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch with Visual Studio Debugger",
+            "type": "cppdbg",
+            "request": "launch",
+            "cmd": "${workspaceFolder}/build/game.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "preLaunchTask": "Build with Make",
+        }
+    ]
+}
