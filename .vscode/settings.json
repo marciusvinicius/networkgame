@@ -3,6 +3,8 @@
         "string.h": "c",
         "iostream": "cpp",
         "game.h": "c",
-        "server.h": "c"
+        "server.h": "c",
+        "signal.h": "c",
+        "stdio.h": "c"
     }
 }

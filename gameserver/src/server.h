@@ -1,11 +1,12 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "enet/enet.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
+
+#include "enet/enet.h"
 
 // Define the same packet types as the client
 #define PKT_TILE_CHUNK 0x01
@@ -23,60 +24,62 @@
 // Define the same tile structure as the client
 typedef struct
 {
-    unsigned char tile_id;
-    unsigned char walkable;
+  unsigned char tile_id;
+  unsigned char walkable;
 } Tile;
 
 // Define the same packet structures as the client
 typedef struct
 {
-    unsigned char type;
-    unsigned char chunk_x;
-    unsigned char chunk_y;
-    Tile tiles[CHUNK_SIZE * CHUNK_SIZE];
+  unsigned char type;
+  unsigned char chunk_x;
+  unsigned char chunk_y;
+  Tile tiles[CHUNK_SIZE * CHUNK_SIZE];
 } TileChunkPacket;
 
 typedef struct
 {
-    unsigned char type;
-    unsigned char dir_x;
-    unsigned char dir_y;
+  unsigned char type;
+  signed char dir_x;
+  signed char dir_y;
 } MovePacket;
 
 // Maximum number of players
 #define MAX_PLAYERS 32
 
+// TODO: move this to a commom lib
+
 // Player position packet structure
 typedef struct
 {
-    unsigned char type;
-    unsigned char player_count;
-    struct
-    {
-        unsigned char id;
-        unsigned char x;
-        unsigned char y;
-        unsigned char color_index; // Added color information
-        unsigned char is_active;   // Added active status
-    } players[MAX_PLAYERS];
+  unsigned char type;
+  unsigned char player_count;
+  struct
+  {
+    unsigned char id;
+    unsigned char x;
+    unsigned char y;
+  } players[MAX_PLAYERS];
 } PlayerPositionsPacket;
 
 // Player ID packet structure
 typedef struct
 {
-    unsigned char type;
-    unsigned char player_id;
-    unsigned char color_index;
+  unsigned char type;
+  unsigned char player_id;
+  unsigned char color_index;
 } PlayerIdPacket;
 
 // Player structure
 typedef struct
 {
-    int x;
-    int y;
-    int id;                    // Connection ID (used for color assignment)
-    unsigned char color_index; // Index into the color array
-    bool active;
+  // keep peer pointer in the player struct
+  ENetPeer *peer; // Pointer to the ENet peer for this player
+  int x;
+  int y;
+  int id;                    // Connection ID (used for color assignment)
+  unsigned char color_index; // Index into the color array
+  bool active;
 } Player;
 
 // Player management functions
@@ -93,7 +96,9 @@ void handle_client_disconnect(ENetEvent *event);
 void handle_client_packet(ENetEvent *event);
 void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y);
 void process_move(ENetPeer *peer, MovePacket *pkt);
+void process_events(void);
 void cleanup_server(void);
+void broadcast_game_state(void);
 bool load_map_from_file(const char *filename);
 
 // External variables

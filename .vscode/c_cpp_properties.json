@@ -5,7 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "C:/raylib/include/**",
-                "W:\\netgamecriogenio\\enet\\include"
+                "W:\\enet\\include"
             ],
             "defines": [
                 "_DEBUG",

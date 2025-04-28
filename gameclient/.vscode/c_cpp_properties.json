@@ -4,7 +4,8 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/raylib/include/**"
+                "C:/raylib/include/**",
+                "W:/enet/include/enet/**"
             ],
             "defines": [
                 "_DEBUG",

@@ -1,9 +1,9 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#include <stdbool.h>
-#include "raymath.h"
 #include "game.h"
+
+#include <stdbool.h>
 
 // Define WIN32_LEAN_AND_MEAN before including Windows headers
 #define WIN32_LEAN_AND_MEAN
@@ -29,7 +29,7 @@
 
 // Function declarations
 bool init_network(void);
-bool connect_to_server(const char* host, int port);
+bool connect_to_server(const char *host, int port);
 void send_move(int dx, int dy);
 void handle_network(void);
 void disconnect(void);
@@ -42,4 +42,4 @@ extern bool connected;
 extern bool connection_confirmed;
 extern int connection_timeout;
 
-#endif // NETWORK_H 
+#endif // NETWORK_H

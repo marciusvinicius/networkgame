@@ -1,0 +1,6 @@
+[] Chuck information is wrong
+[] Movement is weird I should controll it by timedelta
+[] Clear client status after disconnect
+[] Get the id the right way
+[] Color is changing based on position, should be based on id
+[] Understand the input buffer and snapshots
