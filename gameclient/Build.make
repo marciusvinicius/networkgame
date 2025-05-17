@@ -1,9 +1,9 @@
 building:
-	zig cc -o build/game.exe src/network.c src/main.c -target x86_64-windows -I"C:\raylib\include" -L"C:\raylib\lib"  -LW:\enet -IW:\enet\include -lws2_32 -lwinmm -lenet -lenet64 -lraylib
+	zig cc -o build/game src/network.c src/main.c  -I"/home/marcius/Workspace/opensource/raylib/include" -L"/home/marcius/Workspace/opensource/raylib/lib"  -L/home/marcius/Workspace/opensource/enet -I/home/marcius/Workspace/opensource/enet/include -lenet -lraylib
 	@echo Building done
 
 run:building
-	./build/game.exe
+	./build/game
 
 clean:
 	del build/*.o build/*.exe build/*.pdb /s

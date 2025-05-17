@@ -1,19 +1,18 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/raylib/include/**",
-                "W:/netgamecriogenio/enet/include/**"
+                "/home/marcius/Workspace/opensource/raylib/include/**",
+                "/home/marcius/Workspace/opensource/enet/include/**"
             ],
             "defines": [
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE"
             ],
-            "windowsSdkVersion": "10.0.22621.0",
-            "compilerPath": "cl.exe",
+            "compilerPath": "gcc",
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "${default}"

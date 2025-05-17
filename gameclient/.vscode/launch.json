@@ -5,7 +5,7 @@
             "name": "Launch with Visual Studio Debugger",
             "type": "cppdbg",
             "request": "launch",
-            "cmd": "${workspaceFolder}/build/game.exe",
+            "cmd": "${workspaceFolder}/build/game",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

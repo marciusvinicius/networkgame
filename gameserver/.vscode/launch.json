@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Launch with Visual Studio Debugger",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/server.exe",
             "args": [],

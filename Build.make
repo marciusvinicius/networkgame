@@ -1,4 +1,4 @@
 building:
-	build.bat
+	build.sh
 run: building
-	gameserver/build/server.exe && gameclient/build/game.exe
+	gameserver/build/server && gameclient/build/game

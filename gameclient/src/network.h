@@ -40,6 +40,6 @@ void set_local_player_id(unsigned char player_id, unsigned char color_index);
 // Global variables
 extern bool connected;
 extern bool connection_confirmed;
-extern int connection_timeout;
+extern int  connection_timeout;
 
 #endif // NETWORK_H

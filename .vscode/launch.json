@@ -3,9 +3,9 @@
     "configurations": [
         {
             "name": "Launch with Visual Studio Debugger",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/server.exe",
+            "program": "${workspaceFolder}/build/server",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
