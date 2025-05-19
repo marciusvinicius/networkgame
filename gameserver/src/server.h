@@ -14,6 +14,7 @@
 #define PKT_PLAYER_POSITIONS 0x03
 #define PKT_PLAYER_ID 0x04 // New packet type for sending player ID
 #define PKT_ADD_PLAYER 0x05 //Add new player 
+#define PKT_REMOVE_PLAYER 0x06
 
 // Define the same viewport dimensions as the client
 #define VIEWPORT_WIDTH 20

@@ -178,7 +178,6 @@ void draw_tiles() {
     for (int x = 0; x < VIEWPORT_WIDTH; x++) {
       tile_count++;
       Color col = GRAY; // Default color
-
       // Set color based on tile_id
       switch (current_tiles[x][y].tile_id) {
       case 0: // Empty/void
@@ -224,7 +223,7 @@ void set_local_player_id(unsigned char new_player_id, unsigned char color_index)
   local_player_id = (int) new_player_id;
   // Update the local player data
   players[local_player_id].id = local_player_id;
-  players[local_player_id].color_index = color_index;
+  players[local_player_id].color_index = (int) color_index;
   players[local_player_id].active = true;
 }
 
@@ -319,9 +318,19 @@ int main(int argc, char *argv[]) {
 }
 
 void add_remote_player_id(unsigned char player_id, unsigned char color_index) {
-  if (player_id == local_player_id) return;
   int new_player_id = (int) player_id;
+  if (new_player_id == local_player_id) return;
   players[new_player_id].id = new_player_id;
   players[new_player_id].color_index = color_index;
   players[new_player_id].active = true;
+}
+
+void remove_remote_player_id(unsigned char player_id) {
+    int new_player_id = (int) player_id;
+    if (new_player_id == local_player_id) return;
+    players[new_player_id].active = false;
+    players[new_player_id].id = -1;
+    players[new_player_id].color_index = -1;
+    players[new_player_id].x = 0;
+    players[new_player_id].y = 0;
 }

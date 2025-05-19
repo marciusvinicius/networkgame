@@ -1,9 +1,9 @@
 {
-    "files.associations": {
-        "string.h": "c",
-        "network.h": "c",
-        "raymath.h": "c",
-        "game.h": "c",
-        "server.h": "c"
-    }
+  "files.associations": {
+    "string.h": "c",
+    "network.h": "c",
+    "raymath.h": "c",
+    "game.h": "c",
+    "server.h": "c"
+  }
 }

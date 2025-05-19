@@ -77,6 +77,7 @@ void handle_network()
             case PKT_TILE_CHUNK:
             {
                 TileChunkPacket *chunk = (TileChunkPacket *)event.packet->data;
+                printf("Received tile chunk at (%d, %d)\n", chunk->chunk_x, chunk->chunk_y);
                 // Calculate the starting position in the current_tiles array
                 int start_x = chunk->chunk_x * CHUNK_SIZE;
                 int start_y = chunk->chunk_y * CHUNK_SIZE;
@@ -125,6 +126,15 @@ void handle_network()
                 printf("Local player id %d \n", get_local_player_id());
                 if (add_packet->player_id == get_local_player_id()) break;
                 add_remote_player_id(add_packet->player_id, add_packet->color_index);
+                break;
+            }
+            case PKT_REMOVE_PLAYER:
+            {
+                PlayerIdPacket *remove_packet = (PlayerIdPacket *)event.packet->data;   
+                printf("Received player remove %d \n", remove_packet->player_id);    
+                printf("Local player id %d \n", get_local_player_id());
+                if (remove_packet->player_id == get_local_player_id()) break;
+                remove_remote_player_id(remove_packet->player_id);
                 break;
             }
             //TODO: add pkt remove player / entity

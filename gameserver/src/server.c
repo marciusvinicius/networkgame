@@ -50,6 +50,12 @@ void remove_player(int id)
     players[id].x = 0;
     players[id].y = 0;
     players[id].id = -1; // Reset player ID
+    PlayerIdPacket pkt;
+    pkt.type = PKT_REMOVE_PLAYER;
+    pkt.player_id = id;
+    ENetPacket *epkt = enet_packet_create(
+      &pkt, sizeof(pkt), ENET_PACKET_FLAG_RELIABLE);
+      enet_host_broadcast(server, 0, epkt);
   }
 }
 
@@ -239,6 +245,7 @@ void process_events(void)
       handle_client_disconnect(&event);
       break;
     }
+	broadcast_game_state();
   }
 }
 
@@ -248,6 +255,15 @@ void broadcast_old_players(const int new_player_id) {
     {
 		if (players[i].id == new_player_id) continue;
         if (players[i].active)	{
+		  int player_id = players[i].id;
+          int chunk_x = players[player_id].x / CHUNK_SIZE;
+          int chunk_y = players[player_id].y / CHUNK_SIZE;
+
+		 int new_player_chunk_x = players[new_player_id].x / CHUNK_SIZE;
+		 int new_player_chunk_y = players[new_player_id].y / CHUNK_SIZE;
+		
+		  if (new_player_chunk_x != chunk_x && new_player_chunk_y != chunk_y) continue;
+
           PlayerIdPacket add_pkt;
           add_pkt.type = PKT_ADD_PLAYER;
           add_pkt.player_id = players[i].id;
@@ -298,23 +314,24 @@ void handle_client_connection(ENetEvent *event)
   ENetPacket *id_epkt =
       enet_packet_create(&id_pkt, sizeof(id_pkt), ENET_PACKET_FLAG_RELIABLE);
 
-  // Broadcast to all connected peers
   enet_peer_send(event->peer, 0, id_epkt);
+
+  int chunk_x = players[player_id].x / CHUNK_SIZE;
+  int chunk_y = players[player_id].y / CHUNK_SIZE;
+  send_tile_chunk(event->peer, chunk_x, chunk_y);
+
+  // Broadcast to all connected peers
   //printf("Sent player ID %d to new client\n", player_id);
   //Send this new player to all players   
   PlayerIdPacket add_pkt;
   add_pkt.type = PKT_ADD_PLAYER;
   add_pkt.player_id = player_id;
   add_pkt.color_index = players[player_id].color_index;
-
   ENetPacket *add_epkt =
       enet_packet_create(&add_pkt, sizeof(add_pkt), ENET_PACKET_FLAG_RELIABLE);
   enet_host_broadcast(server, 0, add_epkt);
   broadcast_old_players(player_id);
-  broadcast_game_state();
 }
-
-
 
 void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y)
 {
@@ -347,6 +364,10 @@ void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y)
       i++;
     }
   }
+
+  ENetPacket *epkt = enet_packet_create(
+      &pkt, sizeof(pkt), ENET_PACKET_FLAG_RELIABLE);
+  enet_peer_send(peer, 0, epkt);
 }
 
 // Handle a client disconnection
