@@ -17,7 +17,7 @@ typedef struct {
 // Global
 Tile current_tiles[VIEWPORT_WIDTH][VIEWPORT_HEIGHT];
 Player players[MAX_PLAYERS];
-int local_player_id = -1; // ID of the local player
+int local_player_id = -1;
 
 // Player colors based on server assignment
 const Color PLAYER_COLORS[8] = {
@@ -104,8 +104,11 @@ void draw_players() {
       DrawText(id_text, text_x, text_y, 20, WHITE);
 
       // Draw "YOU" label for local player
-      printf("Player id %d", local_player_id);
-      if (players[i].id == local_player_id) {
+      printf("Local Player id %d\n", local_player_id);
+      printf("Player color %d\n", players[i].color_index);
+      printf("Player id in array %d\n", players[i].id);
+
+      if ((int)players[i].id == (int)local_player_id) {
         const char *you_text = "YOU";
         int you_width = MeasureText(you_text, 15);
         int you_x = screen_x + (TILE_SIZE - you_width) / 2;
@@ -123,6 +126,8 @@ void draw_players() {
         DrawRectangle(indicator_x, indicator_y, indicator_size, indicator_size,
                       (Color){255, 255, 255, 200});
       } else {
+          printf("Remote Player color %d\n", players[i].color_index);
+          printf("Remote Player id in array %d\n", players[i].id);
         // Draw other players' labels
         const char *other_text = "OTHER";
         int other_width = MeasureText(other_text, 15);
@@ -208,17 +213,19 @@ void draw_tiles() {
   printf("Drew %d tiles\n", tile_count);
 }
 
+int get_local_player_id() {
+    return local_player_id;
+}
 // Set the local player ID and color
-void set_local_player_id(unsigned char player_id, unsigned char color_index) {
-  printf("Setting local player ID to %d with color %d\n", player_id,
+void set_local_player_id(unsigned char new_player_id, unsigned char color_index) {
+  printf("Setting local player ID to %d with color %d\n", new_player_id,
          color_index);
-
   // Set the local player ID
-  local_player_id = player_id;
+  local_player_id = (int) new_player_id;
   // Update the local player data
-  players[player_id].id = player_id;
-  players[player_id].color_index = color_index;
-  players[player_id].active = true;
+  players[local_player_id].id = local_player_id;
+  players[local_player_id].color_index = color_index;
+  players[local_player_id].active = true;
 }
 
 // Initialize the game window
@@ -258,11 +265,10 @@ int main(int argc, char *argv[]) {
   while (1) {
     // Handle network messages
     handle_network();
-
     // TODO: simulate locally and then send a pull of commmands to the server
     // Consider delta time for movement
     //  Handle user input
-    if (connected) {
+    if (is_connected()) {
       if (IsKeyDown(KEY_UP)) {
         send_move(0, -1);
       }
@@ -276,7 +282,6 @@ int main(int argc, char *argv[]) {
         send_move(1, 0);
       }
     }
-
     // Update connection status
     if (connected && !connection_confirmed) {
       connection_timeout--;
@@ -292,12 +297,10 @@ int main(int argc, char *argv[]) {
 
     // Draw tiles
     draw_tiles();
-
     // Draw players
     draw_players();
-
     // Draw connection status
-    if (!connected) {
+    if (!is_connected()) {
       DrawText("Connecting to server...", 10, 10, 20, RED);
       DrawText("Press ESC to quit", 10, 40, 20, RED);
     }
@@ -309,9 +312,16 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
-
   // Cleanup
   disconnect();
   CloseWindow();
   return 0;
+}
+
+void add_remote_player_id(unsigned char player_id, unsigned char color_index) {
+  if (player_id == local_player_id) return;
+  int new_player_id = (int) player_id;
+  players[new_player_id].id = new_player_id;
+  players[new_player_id].color_index = color_index;
+  players[new_player_id].active = true;
 }

@@ -16,7 +16,8 @@ int connection_timeout = 60; // 60 frames timeout for connection
 // External function to update player positions in the game
 extern void update_player_positions(const PlayerPositionsPacket *pkt);
 // External function to set the local player ID
-extern void set_local_player_id(unsigned char player_id, unsigned char color_index);
+extern void set_local_player_id(unsigned char new_player_id, unsigned char color_index);
+extern int get_local_player_id();
 // External variable for current tiles
 extern Tile current_tiles[VIEWPORT_WIDTH][VIEWPORT_HEIGHT];
 
@@ -79,7 +80,7 @@ void handle_network()
                 // Calculate the starting position in the current_tiles array
                 int start_x = chunk->chunk_x * CHUNK_SIZE;
                 int start_y = chunk->chunk_y * CHUNK_SIZE;
-
+                //TODO:(marcius) Move this to function
                 // Copy the tiles from the packet to the current_tiles array
                 for (int y = 0; y < CHUNK_SIZE; y++)
                 {
@@ -100,25 +101,38 @@ void handle_network()
             }
             case PKT_PLAYER_POSITIONS:
             {
+                printf("Received player positions packet\n");
                 PlayerPositionsPacket *pos = (PlayerPositionsPacket *)event.packet->data;
                 update_player_positions(pos);
                 break;
             }
             case PKT_PLAYER_ID:
             {
+                printf("Received player id\n");
                 PlayerIdPacket *id_packet = (PlayerIdPacket *)event.packet->data;
                 set_local_player_id(id_packet->player_id, id_packet->color_index);
                 printf("Received player ID: %d, color: %d\n",
                        id_packet->player_id, id_packet->color_index);
+                connection_confirmed = true;
+                connected = true;
                 break;
             }
+            case PKT_ADD_PLAYER:
+            {
+                
+                PlayerIdPacket *add_packet = (PlayerIdPacket *)event.packet->data;
+                printf("Received player add %d \n", add_packet->player_id);
+                printf("Local player id %d \n", get_local_player_id());
+                if (add_packet->player_id == get_local_player_id()) break;
+                add_remote_player_id(add_packet->player_id, add_packet->color_index);
+                break;
+            }
+            //TODO: add pkt remove player / entity
             default:
                 printf("Unknown packet type: %d\n", packet_type);
+                enet_packet_destroy(event.packet);
                 break;
-            }
-            enet_packet_destroy(event.packet);
-            break;
-
+        }
         case ENET_EVENT_TYPE_DISCONNECT:
             printf("Disconnected from server\n");
             connected = false;

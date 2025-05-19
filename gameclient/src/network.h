@@ -21,7 +21,7 @@
 #define PKT_MOVE 0x02
 #define PKT_PLAYER_POSITIONS 0x03
 #define PKT_PLAYER_ID 0x04
-
+#define PKT_ADD_PLAYER 0x05
 // Define chunk size
 #define CHUNK_SIZE 5
 #define CHUNK_WIDTH 5
@@ -36,7 +36,8 @@ void disconnect(void);
 bool is_connected(void);
 void update_player_positions(const PlayerPositionsPacket *pkt);
 void set_local_player_id(unsigned char player_id, unsigned char color_index);
-
+int get_local_player_id();
+void add_remote_player_id(unsigned char player_id, unsigned char color_index);
 // Global variables
 extern bool connected;
 extern bool connection_confirmed;

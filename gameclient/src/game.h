@@ -8,12 +8,13 @@
 #define VIEWPORT_HEIGHT 15
 #define MAX_PLAYERS 16
 #define TILE_SIZE 32
-
 // Define the same packet types as the server
 #define PKT_TILE_CHUNK 0x01
 #define PKT_MOVE 0x02
 #define PKT_PLAYER_POSITIONS 0x03
 #define PKT_PLAYER_ID 0x04 // New packet type for receiving player ID
+#define PKT_PLAYER_ADD 0x05 // Add a new player
+#define GLOBAL static
 
 typedef enum EntityType
 {
@@ -54,8 +55,8 @@ typedef struct
   struct
   {
     unsigned char id;
-    unsigned char x;
-    unsigned char y;
+    signed char x;
+    signed char y;
   } players[MAX_PLAYERS];
 } PlayerPositionsPacket;
 

@@ -13,6 +13,7 @@
 #define PKT_MOVE 0x02
 #define PKT_PLAYER_POSITIONS 0x03
 #define PKT_PLAYER_ID 0x04 // New packet type for sending player ID
+#define PKT_ADD_PLAYER 0x05 //Add new player 
 
 // Define the same viewport dimensions as the client
 #define VIEWPORT_WIDTH 20
@@ -99,6 +100,7 @@ void process_move(ENetPeer *peer, MovePacket *pkt);
 void process_events(void);
 void cleanup_server(void);
 void broadcast_game_state(void);
+void broadcast_old_players(const int new_player_id);
 bool load_map_from_file(const char *filename);
 
 // External variables

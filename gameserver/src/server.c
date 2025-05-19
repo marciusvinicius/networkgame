@@ -74,28 +74,26 @@ void broadcast_player_positions(void)
   {
     if (players[i].active)
     {
-      pkt.players[pkt.player_count].x = players[i].x;
-      pkt.players[pkt.player_count].y = players[i].y;
+      pkt.players[i].x = players[i].x;
+      pkt.players[i].y = players[i].y;
       pkt.player_count = pkt.player_count + 1;
 
       printf("Player %d position: (%d, %d) color: %d\n", players[i].id,
              players[i].x, players[i].y, players[i].color_index);
+
+      printf("Broadcasting player positions to all clients. Player count: %d\n",
+             pkt.player_count);
     }
   }
 
-  printf("Broadcasting player positions to all clients. Player count: %d\n",
-         pkt.player_count);
-
-  // Create the packet
+  // Create the packet for all player
   ENetPacket *epkt = enet_packet_create(
       &pkt, sizeof(unsigned char) * 2 + sizeof(struct {
                                           unsigned char id, x, y, color_index;
                                         }) * pkt.player_count,
       ENET_PACKET_FLAG_RELIABLE);
-
   // Broadcast to all connected peers
   enet_host_broadcast(server, 0, epkt);
-
   printf("Player positions broadcast complete\n");
 }
 
@@ -202,7 +200,7 @@ void init_server(void)
     }
   }
 }
-
+//TODO: is not sending information about other
 void broadcast_game_state(void)
 {
 
@@ -244,6 +242,23 @@ void process_events(void)
   }
 }
 
+void broadcast_old_players(const int new_player_id) {
+	//TODO:(marcius) Change it to send only on packet 
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+		if (players[i].id == new_player_id) continue;
+        if (players[i].active)	{
+          PlayerIdPacket add_pkt;
+          add_pkt.type = PKT_ADD_PLAYER;
+          add_pkt.player_id = players[i].id;
+          add_pkt.color_index = players[i].color_index;
+          ENetPacket *add_epkt =
+              enet_packet_create(&add_pkt, sizeof(add_pkt), ENET_PACKET_FLAG_RELIABLE);
+          enet_peer_send(players[new_player_id].peer, 0, add_epkt);
+        }
+    }
+}
+
 // Handle a new client connection
 void handle_client_connection(ENetEvent *event)
 {
@@ -257,6 +272,7 @@ void handle_client_connection(ENetEvent *event)
     if (!players[i].active)
     {
       player_id = i;
+      players[i].active = true;
       break;
     }
   }
@@ -271,34 +287,34 @@ void handle_client_connection(ENetEvent *event)
   // Initialize the new player
   init_player(&players[player_id], player_id);
   players[player_id].peer = event->peer;
-
-  ENetPacket *epkt = enet_packet_create(&players[player_id],
-                                        sizeof(Player), ENET_PACKET_FLAG_RELIABLE);
-
-  // Broadcast to all connected peers
-  enet_host_broadcast(server, 0, epkt);
-  printf("Game state broadcast complete\n");
-  // Clean up the packet
-  enet_packet_destroy(epkt);
-  printf("Game state packet destroyed\n");
-
   // Store the player ID in the peer's data
   event->peer->data = (void *)(intptr_t)player_id;
 
   // Send the player ID to the client
   PlayerIdPacket id_pkt;
-
   id_pkt.type = PKT_PLAYER_ID;
   id_pkt.player_id = player_id;
   id_pkt.color_index = players[player_id].color_index;
-
   ENetPacket *id_epkt =
       enet_packet_create(&id_pkt, sizeof(id_pkt), ENET_PACKET_FLAG_RELIABLE);
 
+  // Broadcast to all connected peers
   enet_peer_send(event->peer, 0, id_epkt);
+  //printf("Sent player ID %d to new client\n", player_id);
+  //Send this new player to all players   
+  PlayerIdPacket add_pkt;
+  add_pkt.type = PKT_ADD_PLAYER;
+  add_pkt.player_id = player_id;
+  add_pkt.color_index = players[player_id].color_index;
 
-  printf("Sent player ID %d to new client\n", player_id);
+  ENetPacket *add_epkt =
+      enet_packet_create(&add_pkt, sizeof(add_pkt), ENET_PACKET_FLAG_RELIABLE);
+  enet_host_broadcast(server, 0, add_epkt);
+  broadcast_old_players(player_id);
+  broadcast_game_state();
 }
+
+
 
 void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y)
 {
@@ -331,14 +347,6 @@ void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y)
       i++;
     }
   }
-
-  // Create and send the packet
-  ENetPacket *epkt =
-      enet_packet_create(&pkt, sizeof(pkt), ENET_PACKET_FLAG_RELIABLE);
-  enet_peer_send(peer, 0, epkt);
-
-  printf("Sent tile chunk at position (%d, %d) with %d tiles\n", chunk_x,
-         chunk_y, i);
 }
 
 // Handle a client disconnection
@@ -357,7 +365,7 @@ void handle_client_disconnect(ENetEvent *event)
 // Handle a packet from a client
 void handle_client_packet(ENetEvent *event)
 {
-  printf("Received packet of size %d\n", event->packet->dataLength);
+  //printf("Received packet of size %d\n", event->packet->dataLength);
 
   // Check packet type
   if (event->packet->dataLength >= sizeof(MovePacket))
