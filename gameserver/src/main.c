@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "server.h"
+
+// Global variables
+ServerPlayerMap player_map = {0};
+
 // Global flag for graceful shutdown
 // This flag is set to 0 when a signal is received, indicating that the server should stop running.
 volatile int running = 1;
@@ -9,8 +13,9 @@ volatile int running = 1;
 // Signal handler for graceful shutdown
 void signal_handler(int signum)
 {
-    printf("Received signal %d, shutting down...\n", signum);
-    running = 0;
+    printf("\nReceived signal %d, shutting down...\n", signum);
+    cleanup_server();
+    exit(0);
 }
 
 int main(void)
@@ -20,7 +25,7 @@ int main(void)
     signal(SIGTERM, signal_handler);
 
     // Initialize the server
-    init_server();
+    init_server(&player_map);
 
     // Run the server
     printf("Server started. Press Ctrl+C to stop.\n");
@@ -35,7 +40,7 @@ int main(void)
         process_events();
         broadcast_game_state();
         // Broadcast updated player positions
-        broadcast_player_positions();
+        broadcast_player_positions(&player_map);
         //  add some sleep to avoid busy waiting
     }
 

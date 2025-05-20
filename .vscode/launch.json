@@ -2,16 +2,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch with Visual Studio Debugger",
+            "name": "Launch Server",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/server",
+            "program": "${workspaceFolder}/gameserver/build/server",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/gameserver",
             "environment": [],
             "externalConsole": true,
-            "preLaunchTask": "Build with Make",
+            "preLaunchTask": "build-server"
+        },
+        {
+            "name": "Launch Client",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/gameclient/build/game",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/gameclient",
+            "environment": [],
+            "externalConsole": true,
+            "preLaunchTask": "build-client"
         }
     ]
 }

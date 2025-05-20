@@ -35,11 +35,11 @@ void send_move(int dx, int dy);
 void handle_network(void);
 void disconnect(void);
 bool is_connected(void);
-void update_player_positions(const PlayerPositionsPacket *pkt);
-void set_local_player_id(unsigned char player_id, unsigned char color_index);
+void update_player_positions(PlayerMap *map, const PlayerPositionsPacket *pkt);
+void set_local_player_id(PlayerMap *map, unsigned char player_id, unsigned char color_index);
 int get_local_player_id();
-void add_remote_player_id(unsigned char player_id, unsigned char color_index);
-void remove_remote_player_id(unsigned char player_id);
+void add_remote_player_id(PlayerMap *map, unsigned char player_id, unsigned char color_index);
+void remove_remote_player_id(PlayerMap *map, unsigned char player_id);
 // Global variables
 extern bool connected;
 extern bool connection_confirmed;

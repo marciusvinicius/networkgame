@@ -5,18 +5,10 @@
 #include "network.h"
 #include "raylib.h"
 
-// Player structure
-typedef struct {
-  int x;
-  int y;
-  int id;                    // Connection ID (used for color assignment)
-  unsigned char color_index; // Color index from server
-  bool active;
-} Player;
-
 // Global
 Tile current_tiles[VIEWPORT_WIDTH][VIEWPORT_HEIGHT];
-Player players[MAX_PLAYERS];
+// Use the PlayerMap from common.h
+PlayerMap player_map = {0};
 int local_player_id = -1;
 
 // Player colors based on server assignment
@@ -32,112 +24,84 @@ const Color PLAYER_COLORS[8] = {
 };
 
 // Initialize players array
-void init_players() {
+void init_players(PlayerMap *map) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    players[i].active = false;
-    players[i].x = 0;
-    players[i].y = 0;
-    players[i].id = -1;
-    players[i].color_index = 0; // Default color index
+    map->entries[i].player.active = false;
+    map->entries[i].player.x = 0;
+    map->entries[i].player.y = 0;
+    map->entries[i].player.id = -1;
+    map->entries[i].player.color_index = 0; // Default color index
   }
+  map->count = 0;
 }
 
 // Update player positions based on server data
-void update_player_positions(const PlayerPositionsPacket *packet) {
-  // Update remote players
+void update_player_positions(PlayerMap *map, const PlayerPositionsPacket *packet) {
   for (int i = 0; i < packet->player_count; i++) {
-    // Find or create a slot for this player
-    players[i].id = packet->players[i].id;
-    players[i].x = packet->players[i].x;
-    players[i].y = packet->players[i].y;
+    int id = packet->players[i].id;
+    for (int j = 0; j < map->count; j++) {
+      if (map->entries[j].player.id == id) {
+        map->entries[j].player.x = packet->players[i].x;
+        map->entries[j].player.y = packet->players[i].y;
+        break;
+      }
+    }
   }
-
-  // Debug print
   printf("Updated positions - Active players: ");
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (players[i].active) {
-      printf("P%d(%d,%d) ", players[i].id, players[i].x, players[i].y);
+  for (int i = 0; i < map->count; i++) {
+    if (map->entries[i].player.active) {
+      printf("P%d(%d,%d) ", map->entries[i].player.id, map->entries[i].player.x, map->entries[i].player.y);
     }
   }
   printf("\n");
 }
 
 // Draw all active players
-void draw_players() {
+void draw_players(PlayerMap *map) {
   printf("Drawing players. Local player ID: %d\n", local_player_id);
   int active_count = 0;
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (players[i].active) {
-      active_count++;
-      printf("Drawing player %d at position (%d, %d) with color %d\n",
-             players[i].id, players[i].x, players[i].y, players[i].color_index);
+  for (int i = 0; i < map->count; i++) {
+    if (!map->entries[i].player.active) {
+      continue;
+    }
+    active_count++;
+    printf("Drawing player %d at position (%d, %d) with color %d\n",
+           map->entries[i].player.id, map->entries[i].player.x, map->entries[i].player.y, map->entries[i].player.color_index);
 
-      // Get color based on server-assigned color index
-      Color player_color = PLAYER_COLORS[players[i].color_index % 8];
+    Color player_color = PLAYER_COLORS[map->entries[i].player.color_index % 8];
+    int screen_x = map->entries[i].player.x * TILE_SIZE;
+    int screen_y = map->entries[i].player.y * TILE_SIZE;
 
-      // Calculate screen position
-      int screen_x = players[i].x * TILE_SIZE;
-      int screen_y = players[i].y * TILE_SIZE;
+    DrawRectangle(screen_x + 2, screen_y + 2, TILE_SIZE, TILE_SIZE, (Color){0, 0, 0, 100});
+    DrawRectangle(screen_x, screen_y, TILE_SIZE, TILE_SIZE, player_color);
+    DrawRectangleLines(screen_x, screen_y, TILE_SIZE, TILE_SIZE, WHITE);
 
-      // Draw player shadow
-      DrawRectangle(screen_x + 2, screen_y + 2, TILE_SIZE, TILE_SIZE,
-                    (Color){0, 0, 0, 100});
+    char id_text[10];
+    sprintf(id_text, "%d", map->entries[i].player.id);
+    int text_width = MeasureText(id_text, 20);
+    int text_x = screen_x + (TILE_SIZE - text_width) / 2;
+    int text_y = screen_y + (TILE_SIZE - 20) / 2;
+    DrawRectangle(text_x - 2, text_y - 2, text_width + 4, 24, (Color){0, 0, 0, 150});
+    DrawText(id_text, text_x, text_y, 20, WHITE);
 
-      // Draw player body
-      DrawRectangle(screen_x, screen_y, TILE_SIZE, TILE_SIZE, player_color);
-
-      // Draw player outline
-      DrawRectangleLines(screen_x, screen_y, TILE_SIZE, TILE_SIZE, WHITE);
-
-      // Draw player ID
-      char id_text[10];
-      sprintf(id_text, "%d", players[i].id);
-
-      // Center the text
-      int text_width = MeasureText(id_text, 20);
-      int text_x = screen_x + (TILE_SIZE - text_width) / 2;
-      int text_y = screen_y + (TILE_SIZE - 20) / 2;
-
-      // Draw text background for better readability
-      DrawRectangle(text_x - 2, text_y - 2, text_width + 4, 24,
-                    (Color){0, 0, 0, 150});
-      DrawText(id_text, text_x, text_y, 20, WHITE);
-
-      // Draw "YOU" label for local player
-      printf("Local Player id %d\n", local_player_id);
-      printf("Player color %d\n", players[i].color_index);
-      printf("Player id in array %d\n", players[i].id);
-
-      if ((int)players[i].id == (int)local_player_id) {
-        const char *you_text = "YOU";
-        int you_width = MeasureText(you_text, 15);
-        int you_x = screen_x + (TILE_SIZE - you_width) / 2;
-        int you_y = screen_y + TILE_SIZE + 5;
-
-        // Draw text background
-        DrawRectangle(you_x - 2, you_y - 2, you_width + 4, 19,
-                      (Color){0, 0, 0, 150});
-        DrawText(you_text, you_x, you_y, 15, WHITE);
-
-        // Draw direction indicator (small white rectangle in the center)
-        int indicator_size = TILE_SIZE / 4;
-        int indicator_x = screen_x + (TILE_SIZE - indicator_size) / 2;
-        int indicator_y = screen_y + (TILE_SIZE - indicator_size) / 2;
-        DrawRectangle(indicator_x, indicator_y, indicator_size, indicator_size,
-                      (Color){255, 255, 255, 200});
-      } else {
-          printf("Remote Player color %d\n", players[i].color_index);
-          printf("Remote Player id in array %d\n", players[i].id);
-        // Draw other players' labels
-        const char *other_text = "OTHER";
-        int other_width = MeasureText(other_text, 15);
-        int other_x = screen_x + (TILE_SIZE - other_width) / 2;
-        int other_y = screen_y + TILE_SIZE + 5;
-        // Draw text background
-        DrawRectangle(other_x - 2, other_y - 2, other_width + 4, 19,
-                      (Color){0, 0, 0, 150});
-        DrawText(other_text, other_x, other_y, 15, WHITE);
-      }
+    if (map->entries[i].player.id == local_player_id) {
+      const char *you_text = "YOU";
+      int you_width = MeasureText(you_text, 15);
+      int you_x = screen_x + (TILE_SIZE - you_width) / 2;
+      int you_y = screen_y + TILE_SIZE + 5;
+      DrawRectangle(you_x - 2, you_y - 2, you_width + 4, 19, (Color){0, 0, 0, 150});
+      DrawText(you_text, you_x, you_y, 15, WHITE);
+      int indicator_size = TILE_SIZE / 4;
+      int indicator_x = screen_x + (TILE_SIZE - indicator_size) / 2;
+      int indicator_y = screen_y + (TILE_SIZE - indicator_size) / 2;
+      DrawRectangle(indicator_x, indicator_y, indicator_size, indicator_size, (Color){255, 255, 255, 200});
+    } else {
+      const char *other_text = "OTHER";
+      int other_width = MeasureText(other_text, 15);
+      int other_x = screen_x + (TILE_SIZE - other_width) / 2;
+      int other_y = screen_y + TILE_SIZE + 5;
+      DrawRectangle(other_x - 2, other_y - 2, other_width + 4, 19, (Color){0, 0, 0, 150});
+      DrawText(other_text, other_x, other_y, 15, WHITE);
     }
   }
   printf("Drew %d active players\n", active_count);
@@ -199,6 +163,9 @@ void draw_tiles() {
         col = PURPLE; // Unknown tile type
         break;
       }
+      printf("Drawing tile %d at position (%d, %d) with color %d\n", current_tiles[x][y].tile_id, x, y, col);
+      printf("Tile ID: %d\n", current_tiles[x][y].tile_id);
+      printf("Tile walkable: %d\n", current_tiles[x][y].walkable);
 
       // Draw the tile
       DrawRectangle(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, col);
@@ -216,15 +183,24 @@ int get_local_player_id() {
     return local_player_id;
 }
 // Set the local player ID and color
-void set_local_player_id(unsigned char new_player_id, unsigned char color_index) {
-  printf("Setting local player ID to %d with color %d\n", new_player_id,
-         color_index);
-  // Set the local player ID
-  local_player_id = (int) new_player_id;
-  // Update the local player data
-  players[local_player_id].id = local_player_id;
-  players[local_player_id].color_index = (int) color_index;
-  players[local_player_id].active = true;
+void set_local_player_id(PlayerMap *map, unsigned char new_player_id, unsigned char color_index) {
+  printf("Setting local player ID to %d with color %d\n", new_player_id, color_index);
+  local_player_id = (int)new_player_id;
+  bool found = false;
+  for (int i = 0; i < map->count; i++) {
+    if (map->entries[i].player.id == local_player_id) {
+      map->entries[i].player.color_index = (int)color_index;
+      map->entries[i].player.active = true;
+      found = true;
+      break;
+    }
+  }
+  if (!found && map->count < MAX_PLAYERS) {
+    map->entries[map->count].player.id = local_player_id;
+    map->entries[map->count].player.color_index = (int)color_index;
+    map->entries[map->count].player.active = true;
+    map->count++;
+  }
 }
 
 // Initialize the game window
@@ -243,13 +219,13 @@ int main(int argc, char *argv[]) {
   }
 
   // Connect to server
-  if (!connect_to_server("localhost", 1234)) {
+  if (!connect_to_server("localhost", 8081)) {
     printf("Failed to connect to server\n");
     return 1;
   }
 
   // Initialize players
-  init_players();
+  init_players(&player_map);
 
   // Initialize tile array
   memset(current_tiles, 0, sizeof(current_tiles));
@@ -297,7 +273,7 @@ int main(int argc, char *argv[]) {
     // Draw tiles
     draw_tiles();
     // Draw players
-    draw_players();
+    draw_players(&player_map);
     // Draw connection status
     if (!is_connected()) {
       DrawText("Connecting to server...", 10, 10, 20, RED);
@@ -317,20 +293,47 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void add_remote_player_id(unsigned char player_id, unsigned char color_index) {
-  int new_player_id = (int) player_id;
+// Add a remote player
+void add_remote_player_id(PlayerMap *map, unsigned char player_id, unsigned char color_index) {
+  int new_player_id = (int)player_id;
   if (new_player_id == local_player_id) return;
-  players[new_player_id].id = new_player_id;
-  players[new_player_id].color_index = color_index;
-  players[new_player_id].active = true;
+
+  // Check if the player is already in the map
+  for (int i = 0; i < map->count; i++) {
+    if (map->entries[i].player.id == new_player_id) {
+      map->entries[i].player.color_index = color_index;
+      map->entries[i].player.active = true;
+      printf("Updated existing player %d in map\n", new_player_id);
+      return;
+    }
+  }
+
+  // If the player is not in the map, add them
+  if (map->count < MAX_PLAYERS) {
+    map->entries[map->count].player.id = new_player_id;
+    map->entries[map->count].player.color_index = color_index;
+    map->entries[map->count].player.active = true;
+    map->entries[map->count].player.x = 0; // Default position
+    map->entries[map->count].player.y = 0; // Default position
+    map->count++;
+    printf("Added new player %d to map\n", new_player_id);
+  } else {
+    printf("Cannot add player %d: map is full\n", new_player_id);
+  }
 }
 
-void remove_remote_player_id(unsigned char player_id) {
-    int new_player_id = (int) player_id;
-    if (new_player_id == local_player_id) return;
-    players[new_player_id].active = false;
-    players[new_player_id].id = -1;
-    players[new_player_id].color_index = -1;
-    players[new_player_id].x = 0;
-    players[new_player_id].y = 0;
+// Remove a remote player
+void remove_remote_player_id(PlayerMap *map, unsigned char player_id) {
+  int new_player_id = (int)player_id;
+  if (new_player_id == local_player_id) return;
+  for (int i = 0; i < map->count; i++) {
+    if (map->entries[i].player.id == new_player_id) {
+      map->entries[i].player.active = false;
+      map->entries[i].player.id = -1;
+      map->entries[i].player.color_index = -1;
+      map->entries[i].player.x = 0;
+      map->entries[i].player.y = 0;
+      break;
+    }
+  }
 }
