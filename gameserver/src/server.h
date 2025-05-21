@@ -33,5 +33,6 @@ void handle_client_packet(ENetEvent *event);
 void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y);
 void process_move(ENetPeer *peer, MovePacket *pkt);
 void broadcast_old_players(ENetPeer *new_player);
+bool load_map_from_file(const char *filename);
 
 #endif // SERVER_H

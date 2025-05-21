@@ -18,9 +18,9 @@ void update_player_positions(PlayerMap *map, const PlayerPositionsPacket *packet
     for (int i = 0; i < packet->player_count; i++) {
         int id = packet->players[i].id;
         for (int j = 0; j < map->count; j++) {
-            if (map->players[j].id == id) {
-                map->players[j].x = packet->players[i].x;
-                map->players[j].y = packet->players[i].y;
+            if (map->players[id].id == id) {
+                map->players[id].x = packet->players[id].x;
+                map->players[id].y = packet->players[id].y;
                 break;
             }
         }

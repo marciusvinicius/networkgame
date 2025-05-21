@@ -24,6 +24,9 @@ int main(void)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
+    if (!load_map_from_file("map.txt")) {
+        exit(1);
+    }
     // Initialize the server
     init_server(&player_map);
 
@@ -38,7 +41,7 @@ int main(void)
     {
         // Check for incoming events and process them
         process_events();
-        broadcast_game_state();
+        //broadcast_game_state();
         // Broadcast updated player positions
         broadcast_player_positions(&player_map);
         //  add some sleep to avoid busy waiting

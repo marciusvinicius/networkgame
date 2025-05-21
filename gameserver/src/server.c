@@ -44,7 +44,7 @@ void init_player(Player *player, int id)
 }
 
 // Remove a player from the game
-void remove_player(ServerPlayerMap *map, ENetPeer* peer)
+void remove_player(ServerPlayerMap *map, ENetPeer *peer)
 {
   for (int i = 0; i < map->count; i++)
   {
@@ -58,10 +58,11 @@ void remove_player(ServerPlayerMap *map, ENetPeer* peer)
       pkt.type = PKT_REMOVE_PLAYER;
       pkt.player_id = map->entries[i].player.id;
       ENetPacket *epkt = enet_packet_create(
-        &pkt, sizeof(pkt), ENET_PACKET_FLAG_RELIABLE);
+          &pkt, sizeof(pkt), ENET_PACKET_FLAG_RELIABLE);
       enet_host_broadcast(server, 0, epkt);
       // Remove entry from map
-      for (int j = i; j < map->count - 1; j++) {
+      for (int j = i; j < map->count - 1; j++)
+      {
         map->entries[j] = map->entries[j + 1];
       }
       map->count--;
@@ -71,15 +72,18 @@ void remove_player(ServerPlayerMap *map, ENetPeer* peer)
 }
 
 // Get a player by their ENetPeer*
-Player *get_player(ServerPlayerMap *map, ENetPeer* peer)
+Player *get_player(ServerPlayerMap *map, ENetPeer *peer)
 {
+  printf("Looking up player for peer\n");
   for (int i = 0; i < map->count; i++)
   {
     if (map->entries[i].peer == peer && map->entries[i].player.active)
     {
+      printf("Found player %d for peer\n", map->entries[i].player.id);
       return &map->entries[i].player;
     }
   }
+  printf("No player found for peer\n");
   return NULL;
 }
 
@@ -114,7 +118,7 @@ void broadcast_player_positions(ServerPlayerMap *map)
                                         }) * pkt.player_count,
       ENET_PACKET_FLAG_RELIABLE);
   // Broadcast to all connected peers
-  enet_host_broadcast(server, 0, epkt);
+  enet_host_broadcast(server, 1, epkt);
   printf("Player positions broadcast complete\n");
 }
 
@@ -151,7 +155,6 @@ bool load_map_from_file(const char *filename)
         printf("Loaded tile at (%d, %d): id=%d, walkable=%d\n", x, y,
                game_map[x][y].tile_id, game_map[x][y].walkable);
       }
-
       x++;
       token = strtok(NULL, " \t\n");
     }
@@ -250,11 +253,18 @@ void process_events(void)
 }
 
 // Broadcast old players to a new player
-void broadcast_old_players(ENetPeer *new_player) {
+void broadcast_old_players(ENetPeer *new_player)
+{
   printf("Broadcasting old players to new player\n");
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (player_map.entries[i].player.active) {
-      PlayerIdPacket add_packet = {PKT_ADD_PLAYER, player_map.entries[i].player.id, player_map.entries[i].player.color_index};
+  for (int i = 0; i < MAX_PLAYERS; i++)
+  {
+    if (player_map.entries[i].player.active)
+    {
+      PlayerIdPacket add_packet = {
+          PKT_ADD_PLAYER,
+          player_map.entries[i].player.id,
+          player_map.entries[i].player.color_index,
+      };
       enet_peer_send(new_player, 0, enet_packet_create(&add_packet, sizeof(add_packet), ENET_PACKET_FLAG_RELIABLE));
       printf("Sent PKT_ADD_PLAYER for player %d to new player\n", player_map.entries[i].player.id);
     }
@@ -300,8 +310,10 @@ void handle_client_connection(ENetEvent *event)
 
   // Send the entire map to the new player
   printf("Sending entire map to new client\n");
-  for (int y = 0; y < VIEWPORT_HEIGHT / CHUNK_SIZE; y++) {
-    for (int x = 0; x < VIEWPORT_WIDTH / CHUNK_SIZE; x++) {
+  for (int y = 0; y < VIEWPORT_HEIGHT / CHUNK_SIZE; y++)
+  {
+    for (int x = 0; x < VIEWPORT_WIDTH / CHUNK_SIZE; x++)
+    {
       send_tile_chunk(event->peer, x, y);
       printf("Sent tile chunk (%d, %d) to new client\n", x, y);
     }
@@ -319,7 +331,6 @@ void handle_client_connection(ENetEvent *event)
   // Broadcast old players to the new player
   printf("Broadcasting old players to new client\n");
   broadcast_old_players(event->peer);
-
   // Update player count
   player_map.count++;
 }
@@ -339,7 +350,6 @@ void send_tile_chunk(ENetPeer *peer, int chunk_x, int chunk_y)
     {
       int tile_x = chunk_x * CHUNK_SIZE + x;
       int tile_y = chunk_y * CHUNK_SIZE + y;
-
       if (tile_x >= 0 && tile_x < VIEWPORT_WIDTH && tile_y >= 0 && tile_y < VIEWPORT_HEIGHT)
       {
         pkt.tiles[y * CHUNK_SIZE + x] = game_map[tile_x][tile_y];
@@ -369,9 +379,12 @@ void handle_client_packet(ENetEvent *event)
   unsigned char *data = event->packet->data;
   unsigned char type = data[0];
 
+  printf("Received packet type: %d\n", type);
+
   switch (type)
   {
   case PKT_MOVE:
+    printf("Processing PKT_MOVE packet\n");
     process_move(event->peer, (MovePacket *)data);
     break;
   default:
@@ -385,6 +398,9 @@ void handle_client_packet(ENetEvent *event)
 // Process a move packet from a client
 void process_move(ENetPeer *peer, MovePacket *pkt)
 {
+  printf("Processing move packet from client\n");
+  printf("Move packet contents - dir_x: %d, dir_y: %d\n", pkt->dir_x, pkt->dir_y);
+
   Player *player = get_player(&player_map, peer);
   if (!player)
   {
@@ -392,26 +408,77 @@ void process_move(ENetPeer *peer, MovePacket *pkt)
     return;
   }
 
+  printf("Player %d current position: (%d, %d)\n", player->id, player->x, player->y);
+
+  // Calculate new position based on current position and direction
   int new_x = player->x + pkt->dir_x;
   int new_y = player->y + pkt->dir_y;
+  printf("Attempting to move to: (%d, %d)\n", new_x, new_y);
 
   // Check bounds
   if (new_x < 0 || new_x >= VIEWPORT_WIDTH || new_y < 0 || new_y >= VIEWPORT_HEIGHT)
   {
-    printf("Move out of bounds: (%d, %d)\n", new_x, new_y);
+    printf("Move out of bounds: (%d, %d) - Rejecting movement\n", new_x, new_y);
+    // Send current position back to client to correct invalid movement
+    PlayerPositionsPacket pos_pkt;
+    pos_pkt.type = PKT_PLAYER_POSITIONS;
+    pos_pkt.player_count = 1;
+    pos_pkt.players[player->id].id = player->id;
+    pos_pkt.players[player->id].x = player->x;
+    pos_pkt.players[player->id].y = player->y;
+    ENetPacket *epkt = enet_packet_create(&pos_pkt, sizeof(pos_pkt), ENET_PACKET_FLAG_RELIABLE);
+    if (enet_peer_send(peer, 0, epkt) < 0)
+    {
+      printf("Failed to send position correction packet\n");
+    }
+    else
+    {
+      printf("Sent position correction packet to player %d\n", player->id);
+    }
     return;
   }
 
   // Check if the new position is walkable
   if (!game_map[new_x][new_y].walkable)
   {
-    printf("Move to non-walkable tile: (%d, %d)\n", new_x, new_y);
+    printf("Move to non-walkable tile: (%d, %d) - Rejecting movement\n", new_x, new_y);
+    // Send current position back to client to correct invalid movement
+    PlayerPositionsPacket pos_pkt;
+    pos_pkt.type = PKT_PLAYER_POSITIONS;
+    pos_pkt.player_count = 1;
+    pos_pkt.players[player->id].id = player->id;
+    pos_pkt.players[player->id].x = player->x;
+    pos_pkt.players[player->id].y = player->y;
+    ENetPacket *epkt = enet_packet_create(&pos_pkt, sizeof(pos_pkt), ENET_PACKET_FLAG_RELIABLE);
+    if (enet_peer_send(peer, 0, epkt) < 0)
+    {
+      printf("Failed to send position correction packet\n");
+    }
+    else
+    {
+      printf("Sent position correction packet to player %d\n", player->id);
+    }
     return;
   }
 
-  // Update player position
+  // Update player position in the player map
+  for (int i = 0; i < player_map.count; i++)
+  {
+    if (player_map.entries[i].player.id == player->id)
+    {
+      player_map.entries[i].player.x = new_x;
+      player_map.entries[i].player.y = new_y;
+      printf("Updated player %d position in map to (%d, %d)\n",
+             player->id, new_x, new_y);
+      break;
+    }
+  }
+
+  // Also update the player pointer for consistency
   player->x = new_x;
   player->y = new_y;
+  printf("Validated and applied movement for player %d to (%d, %d)\n",
+         player->id, new_x, new_y);
 
   // Broadcast the new position to all clients
   broadcast_player_positions(&player_map);

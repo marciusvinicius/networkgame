@@ -10,6 +10,7 @@ Tile current_tiles[VIEWPORT_WIDTH][VIEWPORT_HEIGHT];
 // Use the PlayerMap from common.h
 PlayerMap player_map = {0};
 int local_player_id = -1;
+extern ENetPeer *peer;  // Add extern declaration for peer
 
 // Player colors based on server assignment
 const Color PLAYER_COLORS[8] = {
@@ -37,12 +38,18 @@ void init_players(PlayerMap *map) {
 
 // Update player positions based on server data
 void update_player_positions(PlayerMap *map, const PlayerPositionsPacket *packet) {
+  printf("Updating player positions from server packet\n");
   for (int i = 0; i < packet->player_count; i++) {
     int id = packet->players[i].id;
+    printf("Processing position update for player %d: (%d, %d)\n", 
+           id, packet->players[i].x, packet->players[i].y);
+    
     for (int j = 0; j < map->count; j++) {
       if (map->entries[j].player.id == id) {
         map->entries[j].player.x = packet->players[i].x;
         map->entries[j].player.y = packet->players[i].y;
+        printf("Updated player %d position to (%d, %d)\n", 
+               id, map->entries[j].player.x, map->entries[j].player.y);
         break;
       }
     }
@@ -50,7 +57,8 @@ void update_player_positions(PlayerMap *map, const PlayerPositionsPacket *packet
   printf("Updated positions - Active players: ");
   for (int i = 0; i < map->count; i++) {
     if (map->entries[i].player.active) {
-      printf("P%d(%d,%d) ", map->entries[i].player.id, map->entries[i].player.x, map->entries[i].player.y);
+      printf("P%d(%d,%d) ", map->entries[i].player.id, 
+             map->entries[i].player.x, map->entries[i].player.y);
     }
   }
   printf("\n");
@@ -121,11 +129,12 @@ void handle_tile_chunk(const TileChunkPacket *pkt) {
     for (int x = 0; x < CHUNK_SIZE; x++) {
       int tile_x = start_x + x;
       int tile_y = start_y + y;
-
       // Only copy if the tile is within the viewport bounds
       if (tile_x >= 0 && tile_x < VIEWPORT_WIDTH && tile_y >= 0 &&
           tile_y < VIEWPORT_HEIGHT) {
         current_tiles[tile_x][tile_y] = pkt->tiles[y * CHUNK_SIZE + x];
+
+        printf("TILE LOG %d", current_tiles[tile_x][tile_y].tile_id);
       }
     }
   }
@@ -136,7 +145,6 @@ void handle_tile_chunk(const TileChunkPacket *pkt) {
 
 void draw_tiles() {
   printf("Drawing tiles\n");
-
   int tile_count = 0;
   for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
     for (int x = 0; x < VIEWPORT_WIDTH; x++) {
@@ -211,6 +219,66 @@ bool init_window() {
   return true;
 }
 
+// Update game state with delta time
+void update_game_state(double delta_time) {
+  // Update player positions based on received position updates
+  for (int i = 0; i < player_map.count; i++) {
+    if (player_map.entries[i].player.active) {
+      // For local player, we apply movement locally
+      if (player_map.entries[i].player.id == local_player_id) {
+        // Movement is handled in the main loop
+      }
+      // For other players, positions are updated from network packets
+    }
+  }
+}
+
+// Apply movement locally and send to server
+void handle_movement(int dir_x, int dir_y) {
+  printf("Handling movement: dir_x=%d, dir_y=%d\n", dir_x, dir_y);
+  
+  // Find local player
+  for (int i = 0; i < player_map.count; i++) {
+    if (player_map.entries[i].player.id == local_player_id && player_map.entries[i].player.active) {
+      printf("Found local player at position (%d, %d)\n", 
+             player_map.entries[i].player.x, 
+             player_map.entries[i].player.y);
+      
+      // Calculate new position
+      int new_x = player_map.entries[i].player.x + dir_x;
+      int new_y = player_map.entries[i].player.y + dir_y;
+
+      // Check if the new position is within bounds
+      if (new_x >= 0 && new_x < VIEWPORT_WIDTH && new_y >= 0 && new_y < VIEWPORT_HEIGHT) {
+        // Check if the tile is walkable
+        if (current_tiles[new_x][new_y].walkable) {
+          // Apply movement locally
+          player_map.entries[i].player.x = new_x;
+          player_map.entries[i].player.y = new_y;
+          printf("Applied local movement to position (%d, %d)\n", new_x, new_y);
+
+          // Send movement to server
+          MovePacket move_pkt;
+          move_pkt.type = PKT_MOVE;
+          move_pkt.dir_x = dir_x;
+          move_pkt.dir_y = dir_y;
+          ENetPacket *epkt = enet_packet_create(&move_pkt, sizeof(move_pkt), ENET_PACKET_FLAG_RELIABLE);
+          if (enet_peer_send(peer, 0, epkt) < 0) {
+            printf("Failed to send movement packet to server\n");
+          } else {
+            printf("Sent movement packet to server: dir_x=%d, dir_y=%d\n", dir_x, dir_y);
+          }
+        } else {
+          printf("Cannot move to non-walkable tile at (%d, %d)\n", new_x, new_y);
+        }
+      } else {
+        printf("Cannot move out of bounds: (%d, %d)\n", new_x, new_y);
+      }
+      break;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   // Initialize network
   if (!init_network()) {
@@ -236,35 +304,35 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Main game loop
-  while (1) {
-    // Handle network messages
+  // Initialize last update time
+  double last_update_time = GetTime();
+  const double update_interval = 1.0 / 60.0; // 60 updates per second
+
+  while (!WindowShouldClose()) {
+    double current_time = GetTime();
+    double delta_time = current_time - last_update_time;
+    last_update_time = current_time;
+    {
+      
+      // Handle input and movement
+      int dir_x = 0;
+      int dir_y = 0;
+    
+      if (IsKeyDown(KEY_RIGHT)) dir_x = 1;
+      if (IsKeyDown(KEY_LEFT)) dir_x = -1;
+      if (IsKeyDown(KEY_DOWN)) dir_y = 1;
+       if (IsKeyDown(KEY_UP)) dir_y = -1;
+      // Only handle movement if there's actual movement
+      if (dir_x != 0 || dir_y != 0) {
+        printf("Movement tiles\n");
+        handle_movement(dir_x, dir_y);
+      }
+    }
+    // Handle network events
     handle_network();
-    // TODO: simulate locally and then send a pull of commmands to the server
-    // Consider delta time for movement
-    //  Handle user input
-    if (is_connected()) {
-      if (IsKeyDown(KEY_UP)) {
-        send_move(0, -1);
-      }
-      if (IsKeyDown(KEY_DOWN)) {
-        send_move(0, 1);
-      }
-      if (IsKeyDown(KEY_LEFT)) {
-        send_move(-1, 0);
-      }
-      if (IsKeyDown(KEY_RIGHT)) {
-        send_move(1, 0);
-      }
-    }
-    // Update connection status
-    if (connected && !connection_confirmed) {
-      connection_timeout--;
-      if (connection_timeout <= 0) {
-        connected = false;
-        printf("Connection timeout\n");
-      }
-    }
+
+    // Update game state
+    update_game_state(delta_time);
 
     // Draw game
     BeginDrawing();
@@ -306,19 +374,6 @@ void add_remote_player_id(PlayerMap *map, unsigned char player_id, unsigned char
       printf("Updated existing player %d in map\n", new_player_id);
       return;
     }
-  }
-
-  // If the player is not in the map, add them
-  if (map->count < MAX_PLAYERS) {
-    map->entries[map->count].player.id = new_player_id;
-    map->entries[map->count].player.color_index = color_index;
-    map->entries[map->count].player.active = true;
-    map->entries[map->count].player.x = 0; // Default position
-    map->entries[map->count].player.y = 0; // Default position
-    map->count++;
-    printf("Added new player %d to map\n", new_player_id);
-  } else {
-    printf("Cannot add player %d: map is full\n", new_player_id);
   }
 }
 

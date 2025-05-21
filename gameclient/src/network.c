@@ -78,6 +78,16 @@ void handle_network()
                 uint8_t packet_type = *(uint8_t *)event.packet->data;
                 switch (packet_type)
                 {
+
+                case PKT_ADD_PLAYER:
+                {
+                    PlayerIdPacket *add_packet = (PlayerIdPacket *)event.packet->data;
+                    printf("Received player add %d \n", add_packet->player_id);
+                    printf("Local player id %d \n", get_local_player_id());
+                    if (add_packet->player_id == get_local_player_id()) break;
+                    add_remote_player_id(&player_map, add_packet->player_id, add_packet->color_index);
+                    break;
+                }
                 case PKT_REMOVE_PLAYER:
                     {
                         PlayerIdPacket *remove_packet = (PlayerIdPacket *)event.packet->data;   
@@ -86,6 +96,17 @@ void handle_network()
                         remove_remote_player_id(&player_map, remove_packet->player_id);
                         break;
                     }
+                case PKT_PLAYER_ID:
+                {
+                    printf("Received player id\n");
+                    PlayerIdPacket *id_packet = (PlayerIdPacket *)event.packet->data;
+                    set_local_player_id(&player_map, id_packet->player_id, id_packet->color_index);
+                    printf("Received player ID: %d, color: %d\n",
+                           id_packet->player_id, id_packet->color_index);
+                    connection_confirmed = true;
+                    connected = true;
+                    break;
+                }
                 case PKT_TILE_CHUNK:
                 {
                     TileChunkPacket *chunk = (TileChunkPacket *)event.packet->data;
@@ -105,11 +126,12 @@ void handle_network()
                             // Only copy if the tile is within the viewport bounds
                             if (tile_x >= 0 && tile_x < VIEWPORT_WIDTH && tile_y >= 0 && tile_y < VIEWPORT_HEIGHT)
                             {
-                                current_tiles[tile_x][tile_y] = chunk->tiles[y * CHUNK_SIZE + x];
+
+                                current_tiles[tile_x][tile_y].tile_id = chunk->tiles[y * CHUNK_SIZE + x].tile_id;
+                                current_tiles[tile_x][tile_y].walkable = chunk->tiles[y * CHUNK_SIZE + x].walkable;
                             }
                         }
                     }
-                    printf("Received tile chunk at (%d, %d)\n", chunk->chunk_x, chunk->chunk_y);
                     break;
                 }
                 case PKT_PLAYER_POSITIONS:
@@ -117,26 +139,6 @@ void handle_network()
                     printf("Received player positions packet\n");
                     PlayerPositionsPacket *pos = (PlayerPositionsPacket *)event.packet->data;
                     update_player_positions(&player_map, pos);
-                    break;
-                }
-                case PKT_PLAYER_ID:
-                {
-                    printf("Received player id\n");
-                    PlayerIdPacket *id_packet = (PlayerIdPacket *)event.packet->data;
-                    set_local_player_id(&player_map, id_packet->player_id, id_packet->color_index);
-                    printf("Received player ID: %d, color: %d\n",
-                           id_packet->player_id, id_packet->color_index);
-                    connection_confirmed = true;
-                    connected = true;
-                    break;
-                }
-                case PKT_ADD_PLAYER:
-                {
-                    PlayerIdPacket *add_packet = (PlayerIdPacket *)event.packet->data;
-                    printf("Received player add %d \n", add_packet->player_id);
-                    printf("Local player id %d \n", get_local_player_id());
-                    if (add_packet->player_id == get_local_player_id()) break;
-                    add_remote_player_id(&player_map, add_packet->player_id, add_packet->color_index);
                     break;
                 }
                 
